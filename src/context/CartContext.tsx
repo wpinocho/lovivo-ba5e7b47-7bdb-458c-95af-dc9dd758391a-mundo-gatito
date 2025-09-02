@@ -13,92 +13,80 @@ export interface Kitten {
   gender: string;
 }
 
-interface CartItem extends Kitten {
+interface CartItem {
+  kitten: Kitten;
   quantity: number;
 }
 
 interface CartContextType {
-  items: CartItem[];
+  cartItems: CartItem[];
   addToCart: (kitten: Kitten) => void;
-  removeFromCart: (id: number) => void;
-  updateQuantity: (id: number, quantity: number) => void;
-  getTotalPrice: () => number;
-  getTotalItems: () => number;
+  removeFromCart: (kittenId: number) => void;
   clearCart: () => void;
+  getTotalItems: () => number;
+  getTotalPrice: () => number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  console.log('Cart items updated:', items);
+  console.log('CartProvider rendered with', cartItems.length, 'items');
 
   const addToCart = (kitten: Kitten) => {
     console.log('Adding kitten to cart:', kitten.name);
-    setItems(prevItems => {
-      const existingItem = prevItems.find(item => item.id === kitten.id);
+    setCartItems(prevItems => {
+      const existingItem = prevItems.find(item => item.kitten.id === kitten.id);
       if (existingItem) {
         return prevItems.map(item =>
-          item.id === kitten.id
+          item.kitten.id === kitten.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       } else {
-        return [...prevItems, { ...kitten, quantity: 1 }];
+        return [...prevItems, { kitten, quantity: 1 }];
       }
     });
   };
 
-  const removeFromCart = (id: number) => {
-    console.log('Removing kitten from cart:', id);
-    setItems(prevItems => prevItems.filter(item => item.id !== id));
-  };
-
-  const updateQuantity = (id: number, quantity: number) => {
-    console.log('Updating quantity for kitten:', id, 'to:', quantity);
-    if (quantity <= 0) {
-      removeFromCart(id);
-    } else {
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === id ? { ...item, quantity } : item
-        )
-      );
-    }
-  };
-
-  const getTotalPrice = () => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
-  };
-
-  const getTotalItems = () => {
-    return items.reduce((total, item) => total + item.quantity, 0);
+  const removeFromCart = (kittenId: number) => {
+    console.log('Removing kitten from cart:', kittenId);
+    setCartItems(prevItems => prevItems.filter(item => item.kitten.id !== kittenId));
   };
 
   const clearCart = () => {
     console.log('Clearing cart');
-    setItems([]);
+    setCartItems([]);
+  };
+
+  const getTotalItems = () => {
+    return cartItems.reduce((total, item) => total + item.quantity, 0);
+  };
+
+  const getTotalPrice = () => {
+    return cartItems.reduce((total, item) => total + (item.kitten.price * item.quantity), 0);
+  };
+
+  const value: CartContextType = {
+    cartItems,
+    addToCart,
+    removeFromCart,
+    clearCart,
+    getTotalItems,
+    getTotalPrice
   };
 
   return (
-    <CartContext.Provider value={{
-      items,
-      addToCart,
-      removeFromCart,
-      updateQuantity,
-      getTotalPrice,
-      getTotalItems,
-      clearCart
-    }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );
 };
 
-export const useCart = () => {
+export const useCart = (): CartContextType => {
   const context = useContext(CartContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
